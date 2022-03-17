@@ -1,0 +1,9 @@
+jenkins installation in centos:
+follow the official guideline and below command
+1. https://pkg.jenkins.io/redhat-stable/
+2. sudo systemctl start jenkins
+3. sudo systemctl enable jenkins
+4. sudo chkconfig jenkins on
+5. sudo service jenkins status
+6. run jenkins server on port 8080 with ec2 instance
+
