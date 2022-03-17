@@ -1,0 +1,369 @@
+Create and Deploy applications using CodeDeploy and CodePipeline
+Lab Details
+This lab walks you through how to create a two-stage pipeline that uses an Amazon S3 bucket having versioning enabled and uses AWS CodePipeline to deploy a sample application.
+
+Duration: 90 minutes
+
+AWS Region: US East (N. Virginia) us-east-1
+
+Introduction
+What is AWS CodePipeline?
+AWS CodePipeline helps you in modeling, visualizing, and automating the steps required to continuously deliver the release of your software.
+
+Using AWS CodePipeline, you can create and configure various stages of a software release process. It helps you automate the delivery of software having a frequent release.
+
+AWS CodePipeline can help you do various tasks, such as
+
+Automating release process of software delivery
+
+View Pipeline history details
+
+Customize the stages and action
+
+Choose the source, build and deploy stage.
+
+Add the manual approval for the release process.
+
+Integration with various AWS Services.
+
+AWS CodePipeline at a glance.
+
+
+Source: A place where source code with its revisions is stored. It can be Amazon S3 Bucket, CodeCommit repository, or Git-based repositories such as GitHub and Bitbucket.
+
+Build: In this phase, the buildspec.yml file plays a very important role. This is the phase where software is tested and build. 
+
+Staging: A place where code is deployed into a testing environment or also called a pre-production environment. You use this phase to test the software before making it live for public users. This is an optional stage if the application is well tested before uploading to the source.
+
+Manual approval: This phase helps software engineers to get the approval for the code, deployed and well tested into the testing environment. It uses SNS to get the approvals on the email. This is the optional stage.
+
+Deploy: The last phase for the delivery of software. Using AWS CodePipeline, applications can be deployed on Amazon EC2 Instances using CodeDeploy, Elastic Beanstalk, or AWS OpsWorks Stacks. 
+
+Architecture Diagram
+
+
+
+Task Details
+Launching Lab Environment
+
+Launching an EC2 Instance
+
+SSH into EC2 Instance
+
+Install AWS CLI, and CodeDeploy Agent
+
+Copy the S3 Bucket key
+
+Create a CodeDeploy application and Deployment Group
+
+Create a CodePipeline pipeline and deploy the application on the instance
+
+Test the application using EC2 Instance Public IPv4 DNS
+
+Validation of the lab
+
+Delete the resources created
+
+Lab Steps
+Task 1: Launching Lab Environment
+Launch the lab environment by clicking on . Please wait until the lab environment is provisioned. It will take less than 2 minutes to provision the lab environment.
+
+Once the Lab is started, you will be provided with IAM user name, Password, AccessKey and Secret Access Key. 
+
+Click on the , AWS Management Console will open in a new tab.
+
+On the AWS sign-in page, the Account ID will be present by default.
+
+Leave the Account ID as default. Do not remove or change the Account ID otherwise, you cannot proceed with the lab.
+
+Copy and paste the IAM user name and Password into AWS Console. Click on Sign in to log into the AWS Console.
+
+Note: If you face any issues, please go through FAQs and Troubleshooting for Labs.
+
+Task 2: Launching an EC2 Instance
+Make sure you are in US East (N. Virginia) us-east-1 Region. 
+
+Navigate to EC2 by clicking on the  menu in the top, then click on  in the  section.
+
+Navigate to  on the left panel and click on 
+
+Choose an Amazon Machine Image (AMI): Search for Amazon Linux 2 AMI in the search box and click on the select button.
+
+
+Choose an Instance Type: select  and then click on the 
+Configure Instance Details: Select the IAM role present.
+
+
+Keep all the options as default and click on 
+
+Add Storage: No need to change anything in this step, click on 
+
+Add Tags: Click on 
+
+Key    : Name
+
+Value    : MyEC2Instance
+
+Click on 
+
+Configure Security Group:
+
+Assign a security group: Create a new security group
+
+Security group name: CodePipeline-SG
+
+Description: Security group for CodePipeline
+
+To add SSH,
+
+Choose Type: 
+
+Source: Custom (Allow specific IP address) or Anywhere (From ALL IP addresses accessible).
+
+For HTTP,
+
+Click on 
+
+Choose Type: HTTP 
+
+Source: (Allow specific IP address) or  (From ALL IP addresses accessible).
+
+After that, click on 
+
+Review and Launch: Review all settings and click on .
+
+Key Pair : Create a new key pair, enter MyEC2Key, click on  , and store it on your local machine, Click on .
+
+Launch Status: Your instance is now launching, Click on the instance ID and wait for complete initialization of instance state till status change to 
+
+Note down the sample IPv4 Public IP Address of the EC2 instance. A sample is shown in the screenshot below.
+
+
+Task 3: SSH into EC2 Instance
+Please follow the steps in SSH into EC2 Instance.
+Task 4: Install AWS CLI, and CodeDeploy Agent
+Switch to root user: sudo su
+
+Now run the updates using the following command: 
+
+yum -y update
+
+Install the CodeDeploy agent:
+
+Install the prerequisite i.e. ruby and wget
+
+yum install ruby wget -y
+
+Download the CodeDeploy agent's installer
+
+wget https://aws-codedeploy-us-east-1.s3.us-east-1.amazonaws.com/latest/install
+
+Change the permission of the installer
+
+chmod +x ./install
+
+Install the latest version of the CodeDeploy agent
+
+sudo ./install auto
+
+To check that the service is running, run the following command:
+
+service codedeploy-agent status
+
+Note: If the output is "The AWS CodeDeploy agent is running as PID 785" or any other PID. It means codedeploy agent is running fine. 
+
+If the output says, "error: No AWS CodeDeploy agent running", then start the agent by running the below command and check the status again.
+
+Start the agent:
+
+service codedeploy-agent start
+
+check the status again:
+
+service codedeploy-agent status 
+
+Task 5: Copy the S3 Bucket's key
+Navigate to the  menu at the top. Click on  in the  section.
+
+Open the bucket starting with the name Whizlabs.
+
+Click on the object present to see its properties.
+
+Copy the object Key, and save it to notepad. We'll need this in further steps.
+
+Task 6: Create a CodeDeploy application and Deployment group
+Navigate to CodeDeploy by clicking on the  menu at the top, then click on  in the  section.
+
+Click on the Applications present on the left sidebar under CodeDeploy option.
+
+To create a CodeDeploy application click on the  button.
+
+In Application configuration, Enter the application name as Whiz_App.
+
+Select the EC2/On-Premises as Compute platform.
+
+And, click on the  button.
+
+The application is now created.
+
+To create a deployment group, Click on the  button.
+
+Deployment group name: Whiz_DepGroup
+
+Select the service role from the dropdown, by clicking on that option.
+
+Deployment type: In-place deployment
+
+Environment configuration: Select Amazon EC2 Instances
+
+In Tag Group 1, use the following tags to select the EC2 Instance for deployment:
+Note: The value should be the same as the tag defined while creation of EC2 Instance.
+
+Key: Name
+
+Value: MyEC2Instance
+
+
+
+Matching instances will show the record as 1 unique matched instance.
+
+Agent configuration with AWS Systems Manager: Never
+
+Deployment settings: Select CodeDeployDefault.AllAtOnce
+
+Load balancer: Uncheck 
+
+Click on the  button.
+
+A deployment group is now created.
+
+
+Task 7: Create a CodePipeline pipeline and deploy the application on the instance
+Navigate to CodePipeline by clicking on the  menu at the top, then click on  in the  section.
+
+On the homepage of CodePipeline, click on the Create pipeline button.
+
+
+For the Step-1, Choose pipeline settings
+
+Pipeline name: Whiz_Pipeline
+
+Service role: New service role
+
+Check the option of creating a new service role (Default)
+
+
+Expand the option of Advanced settings
+
+Artifact store: Custom location 
+
+Bucket: Select the Bucket name starting whiz Whizlabs
+
+click on the Next button.
+
+
+
+For the Step-2, Add source stage
+
+Source provider: Amazon S3
+
+Bucket: whizlabs[followed by a number that is autogenerated].
+
+S3 object key: SampleApp_Linux.zip
+
+Change detection options: AWS CodePipeline
+
+Click on the Next button.
+
+
+For the Step-3, Add build stage
+
+Click on the Skip build stage.
+
+
+confirm to skip by clicking on the Skip button in the confirmation popup
+
+
+For the Step-4, Add deploy stage
+
+Deploy provider: AWS CodeDeploy
+
+Region: US East (N. Virginia)
+
+Application name: Whiz_App
+
+Deployment group: Whiz_DevGroup
+
+Click on the Next button.
+
+
+For the Step-5, Review
+
+Review everything and click on the  button.
+
+The pipeline is now created.
+
+
+CodePipeline has started to run and will succeed.
+
+
+Task 8: Test the application using EC2 Instance Public IPv4 DNS
+Navigate to EC2 by clicking on the  menu in the top, then click on  in the  section.
+
+On the dashboard, click on the Instances (running).
+
+To view the metadata of EC2 Instance, click on the Instance ID for the instance named MyEC2Instance.
+
+Copy the Public IPv4 DNS of the Instance.
+
+
+Open the new tab in the browser and paste the public IP.
+
+
+Task 9: Validation of the lab
+Once the lab steps are completed, please click on the  button on the right side panel.
+This will validate the resources in the AWS account and displays whether you have completed this lab successfully or not.
+
+Sample output : 
+
+
+
+Task 10: Delete the resources created
+1: Delete the CodeDeploy application
+Navigate to CodeDeploy by clicking on the  menu at the top, then click on  in the  section.
+Click on the Application, present on the left sidebar below Deployments under the CodeDeploy option.
+
+Created application is present there, click on the Application name, Whiz_App.
+
+To delete the application, click on the Delete application button.
+
+In the confirmation pop-up, type delete to complete the deletion of the application.
+
+2: Terminate the EC2 instance
+Navigate to EC2 by clicking on the  menu in the top, then click on  in the  section.
+
+Click on the , present on the left sidebar below Instances.
+
+To terminate the EC2 instance, perform the following task:
+
+Select the EC2 Instance
+
+Click on the Instance state
+
+Choose Terminate instance
+
+Confirm the termination of EC2 Instance, by clicking on the Terminate button.
+
+Completion and Conclusion
+
+You have successfully created and launched Amazon EC2 Instance.
+
+You have successfully logged into the EC2 instance by SSH.
+
+You have successfully installed AWS CLI and CodeDeploy Agent.
+
+You have successfully created a CodeDeploy application and Deployment group.
+
+You have successfully created a CodePipeline pipeline deployed the application on the instance with the help of CodeDeploy.
+
+You have successfully tested the application using Public IPv4 DNS of the EC2 Instance.
